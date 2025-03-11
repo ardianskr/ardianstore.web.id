@@ -1,0 +1,257 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qris Payment</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #333;
+            font-family: Arial, sans-serif;
+            color: white;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 600px;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #FFA500;
+            margin-bottom: 10px;
+        }
+
+        .info-box {
+            background-color: rgba(50, 50, 50, 0.9);
+            border-left: 3px solid #FFA500;
+            padding: 15px;
+            margin-bottom: 30px;
+            border-radius: 5px;
+        }
+
+        .nominal-section {
+            margin-bottom: 20px;
+        }
+
+        .nominal-section h3 {
+            color: white;
+            margin-bottom: 10px;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            background-color: #444;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .best-seller {
+            margin-bottom: 20px;
+        }
+
+        .best-seller h3 {
+            color: white;
+            margin-bottom: 10px;
+        }
+
+        .button-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .amount-button {
+            background-color: #FFA500;
+            border: none;
+            padding: 10px;
+            color: black;
+            cursor: pointer;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .process-button {
+            width: 100%;
+            padding: 12px;
+            background-color: #FFA500;
+            border: none;
+            color: black;
+            cursor: pointer;
+            border-radius: 5px;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+
+        #qrcode {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        #error-message {
+            margin-top: 20px;
+            color: red;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        canvas {
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Qris Payment min 450rb</h1>
+            <div>Minimal transaksi Rp. 450.000 dan Maksimal Rp. 749.000</div>
+        </div>
+
+        <div class="info-box">
+            <div>Sudah dipastikan QRIS MUNCUL SPL.</div>
+            <div>Jika diatas 500rb tidak MUNCUL, coba dibawah nominal 500rb.</div>
+        </div>
+
+        <div class="nominal-section">
+            <h3>Nominal:</h3>
+            <input type="text" id="nominalInput" placeholder="Masukkan Nominal" oninput="formatNumber(this)">
+        </div>
+
+        <div class="best-seller">
+            <h3>Best Seller:</h3>
+            <div class="button-grid">
+                <button class="amount-button" onclick="setAmount(450000)">450.000</button>
+                <button class="amount-button" onclick="setAmount(499999)">499.999</button>
+                <button class="amount-button" onclick="setAmount(600000)">600.000</button>
+                <button class="amount-button" onclick="setAmount(700000)">700.000</button>
+                <button class="amount-button" onclick="setAmount(740000)">740.000</button>
+                <button class="amount-button" onclick="setAmount(749000)">749.000</button>
+            </div>
+        </div>
+
+        <button class="process-button" onclick="generateQRIS()">Generate</button>
+        <div id="qrcode"></div>
+        <div id="error-message" style="display: none;">
+            Terjadi kesalahan saat membuat QRIS. Silakan hubungi admin untuk bantuan.
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+    <script>
+        const QRIS_CODES = {
+            code1: "00020101021126580013ID.CO.BRI.WWW01189360000200700508130208700508130303UMI51440014ID.CO.QRIS.WWW0215ID10253706870100303UMI5204581453033605802ID5915DOYAN PISANG 266006SLEMAN61055528362070703A0163043413",
+            code2: "00020101021126580013ID.CO.BRI.WWW01189360000200700486030208700486030303UMI51440014ID.CO.QRIS.WWW0215ID10253691101230303UMI5204581453033605802ID5915DOYAN PISANG 256006SLEMAN61055528362070703A0163045DE6",
+            code3: "00020101021126580013ID.CO.BRI.WWW01189360000200700481060208700481060303UMI51440014ID.CO.QRIS.WWW0215ID10253688839360303UMI5204581453033605802ID5920SRC WIJOYO KESUMO 356006SLEMAN61055528162070703A016304BC71",
+            code4: "00020101021126580013ID.CO.BRI.WWW01189360000200700470120208700470120303UMI51440014ID.CO.QRIS.WWW0215ID10253685426800303UMI5204581453033605802ID5915DOYAN PISANG 246006BANTUL61055519462070703A016304CE3F",
+            code5: "00020101021126580013ID.CO.BRI.WWW01189360000200700452830208700452830303UMI51440014ID.CO.QRIS.WWW0215ID10253678595230303UMI5204581453033605802ID5920SRC WIJOYO KESUMO 346006SLEMAN61055528362070703A01630426E8",
+           
+        };
+
+        function formatNumber(input) {
+            let value = input.value.replace(/\D/g, '');
+            if (value !== '') {
+                value = parseInt(value).toLocaleString('id-ID');
+            }
+            input.value = value;
+        }
+
+        function setAmount(amount) {
+            const input = document.getElementById('nominalInput');
+            input.value = amount.toLocaleString('id-ID');
+        }
+
+        function pad(number) {
+            return number < 10 ? '0' + number : number.toString();
+        }
+
+        function toCRC16(input) {
+            let crc = 0xFFFF;
+            for (let i = 0; i < input.length; i++) {
+                crc ^= input.charCodeAt(i) << 8;
+                for (let j = 0; j < 8; j++) {
+                    crc = (crc & 0x8000) ? (crc << 1) ^ 0x1021 : crc << 1;
+                }
+            }
+            let hex = (crc & 0xFFFF).toString(16).toUpperCase();
+            return hex.length === 3 ? "0" + hex : hex;
+        }
+
+        function makeString(qris, { nominal } = {}) {
+            if (!qris) throw new Error('The parameter "qris" is required.');
+            if (!nominal) throw new Error('The parameter "nominal" is required.');
+
+            let qrisModified = qris.slice(0, -4).replace("010211", "010212");
+            let qrisParts = qrisModified.split("5802ID");
+
+            let amount = "54" + pad(nominal.toString().length) + nominal;
+            amount += "5802ID";
+
+            let output = qrisParts[0].trim() + amount + qrisParts[1].trim();
+            output += toCRC16(output);
+
+            return output;
+        }
+
+        function getRandomQRISCode() {
+            const codes = Object.values(QRIS_CODES);
+            const randomIndex = Math.floor(Math.random() * codes.length);
+            return codes[randomIndex];
+        }
+
+        async function generateQRIS() {
+            const nominalStr = document.getElementById('nominalInput').value.replace(/\D/g, '');
+            const nominal = parseInt(nominalStr);
+            
+            const errorMessage = document.getElementById('error-message');
+            errorMessage.style.display = 'none';
+
+            if (!nominal) {
+                alert('Harap masukkan nominal pembayaran.');
+                return;
+            }
+
+            if (nominal < 450000 || nominal > 749000) {
+                alert('Nominal harus antara Rp. 450.000 dan Rp. 749.000');
+                return;
+            }
+
+            try {
+                const selectedQRIS = getRandomQRISCode();
+                const qrisDinamis = makeString(selectedQRIS, { nominal: nominal });
+                
+                const qrcodeElement = document.getElementById('qrcode');
+                qrcodeElement.innerHTML = '';
+                
+                QRCode.toCanvas(qrisDinamis, { 
+                    margin: 2, 
+                    width: 200 
+                }, function (err, canvas) {
+                    if (err) throw err;
+                    qrcodeElement.appendChild(canvas);
+                });
+            } catch (error) {
+                console.error(error);
+                errorMessage.style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html>
